@@ -7,20 +7,21 @@
 
 ;;; macros
 
-(defn _mlet [bindings body]
-  (let [$ (hy.gensym)]
-    (match bindings
-      #() body
-      #(name form) `(.then ~form
-                           (fn [~$]
-                             (let [~name ~$]
-                               ~body)))
-      #(#* bindings name form) (_mlet `[~@bindings]
-                                 (_mlet `[~name ~form]
-                                   body)))))
-
 (defmacro mlet [bindings #* body]
-  (_mlet bindings `(do ~@body)))
+  (let [mlet-cast (hy.gensym)]
+    (defn _mlet [bindings body]
+      (let [$ (hy.gensym)]
+        (match bindings
+          #() body
+          #(name form) `(.then (~mlet-cast ~form)
+                               (fn [~$]
+                                 (let [~name ~$]
+                                   ~body)))
+          #(#* bindings name form) (_mlet `[~@bindings]
+                                     (_mlet `[~name ~form]
+                                       body)))))
+    `(let [~mlet-cast hy.I.hy-promesa.core.cast]
+       ~(_mlet bindings `(do ~@body)))))
 
 ;;; executor
 
@@ -200,16 +201,24 @@
 ;;; test
 
 (comment
-  (.start *executor*)
+  (eval-and-compile
+    (hy.I.hy-functional._bootstrap)
+    (hy.I.hy-promesa._bootstrap)
+    (import
+      asyncio))
+  (.start p.*executor*)
   (def host "www.baidu.com")
-  (mlet [#(reader writer) (cast (asyncio.open-connection host 80))]
-    (-> (mlet [_ (cast (.write writer (.encode (.format "GET / HTTP/1.1\r\nHost: {}\r\n\r\n" host))))
-               _ (cast (.drain writer))
-               content (cast (.read reader 4096))]
-          (.decode content))
-        (.then* (fn [content]
-                  (print content)))
-        (.finally* (fn []
-                     (print "close writer")
-                     (.close writer)))))
+  (-> (p.mlet [[reader writer] (asyncio.open-connection host 80)]
+        (-> (p.mlet [_ (.write writer (.encode (.format "GET / HTTP/1.1\r\nHost: {}\r\n\r\n" host)))
+                     _ (.drain writer)
+                     content (.read reader 4096)]
+              (.decode content))
+            (.then* (fn [content]
+                      (print content)))
+            (.finally* (fn []
+                         (.close writer)))))
+      (.catch* (fn [exc]
+                 (print "except:" exc)))
+      (p.auto-stop))
+  (.join p.*executor*)
   )
