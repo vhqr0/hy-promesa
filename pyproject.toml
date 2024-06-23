@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "hy-promesa"
+version = "0.1.0"
+description = "Promise library for Hy."
+authors = ["vhqr0 <zq_cmd@163.com>"]
+readme = "readme.org"
+packages = [{include = "hy_promesa"}]
+
+[tool.poetry.dependencies]
+python = "<3.13,>=3.12"
+hy = "^0.29.0"
+hy-functional = { git = "https://github.com/vhqr0/hy-functional.git", rev = "6a4a1c7" }
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
