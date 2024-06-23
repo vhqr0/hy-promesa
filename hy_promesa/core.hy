@@ -1,5 +1,5 @@
-(eval-when-compile
-  (hy.I.hy-functional._bootstrap))
+(require
+  hy-functional.core *)
 
 (import
   asyncio
